@@ -139,6 +139,32 @@ class StoreMigrationTest {
     }
 
     @Test
+    fun ignoreAllPermanentlyPromotesEveryListedAppInOneWrite() = runTest {
+        val store = ControlledPreferencesDataSource(eagerDefaults = true)
+        val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val prefs = UpdatePreferencesRepositoryImpl(store, scope, Json)
+        advanceUntilIdle()
+        val first = ignoredCandidate("com.example.first")
+        val second = ignoredCandidate("com.example.second")
+        val untouched = ignoredCandidate("com.example.untouched")
+
+        prefs.ignoreOnce(first)
+        prefs.ignoreOnce(untouched)
+        advanceUntilIdle()
+
+        prefs.ignoreAllPermanently(listOf(first, second))
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf("com.example.first", "com.example.second"),
+            prefs.permanentIgnores.value.map { it.packageName },
+        )
+        // 批量忽略应把对应条目提升到永久列表，未列出的「忽略本次」条目保持不动
+        assertEquals(listOf("com.example.untouched"), prefs.onceIgnores.value.map { it.packageName })
+        scope.cancel()
+    }
+
+    @Test
     fun updateHistoryCommitsAPersistedPendingEntryInOrder() = runTest {
         val store = ControlledPreferencesDataSource(eagerDefaults = true)
         val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
@@ -196,6 +222,18 @@ class StoreMigrationTest {
         scope.cancel()
     }
 }
+
+private fun ignoredCandidate(packageName: String) = MarketAppInfo(
+    appId = 1L,
+    packageName = packageName,
+    displayName = packageName,
+    publisherName = "Example",
+    versionName = "2.0",
+    versionCode = 2L,
+    icon = "",
+    apkSize = 100L,
+    ratingScore = 5.0,
+)
 
 private class RecordingThemePlatformPreferences : ThemePlatformPreferences {
     var lastPredictiveBackEnabled = false

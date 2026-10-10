@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,9 +56,13 @@ import com.app.market.resources.Res
 import com.app.market.resources.app_list_permission_refresh_hint
 import com.app.market.resources.app_list_permission_required
 import com.app.market.resources.back
+import com.app.market.resources.cancel
 import com.app.market.resources.collapse_change_log
+import com.app.market.resources.confirm
 import com.app.market.resources.expand_change_log
 import com.app.market.resources.go_to_settings
+import com.app.market.resources.ignore_all_permanent
+import com.app.market.resources.ignore_all_permanent_confirm
 import com.app.market.resources.ignore_once
 import com.app.market.resources.ignore_permanent
 import com.app.market.resources.nav_updates
@@ -72,6 +78,7 @@ import com.app.market.resources.version_transition_label
 import com.app.market.ui.component.AppActionButton
 import com.app.market.ui.component.AppButton
 import com.app.market.ui.component.AppIcon
+import com.app.market.ui.component.AppTextButton
 import com.app.market.ui.component.CardSegmentContainer
 import com.app.market.ui.component.LoadingBox
 import com.app.market.ui.component.MainTabScaffold
@@ -91,6 +98,7 @@ import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import top.yukonga.miuix.kmp.window.WindowDialog
 
 @Composable
 fun UpdatesTab(
@@ -102,6 +110,7 @@ fun UpdatesTab(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val downloadStates = viewModel.downloadStates.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    var showIgnoreAllDialog by rememberSaveable { mutableStateOf(false) }
 
     MainTabScaffold(
         title = stringResource(Res.string.nav_updates)
@@ -152,6 +161,7 @@ fun UpdatesTab(
                     listPadding = listPadding,
                     viewModel = viewModel,
                     onOpenDetail = onOpenDetail,
+                    onIgnoreAll = { showIgnoreAllDialog = true },
                     modifier = Modifier
                         .fillMaxHeight()
                         .scrollEndHaptic()
@@ -159,6 +169,30 @@ fun UpdatesTab(
                         .nestedScroll(scrollBehavior.nestedScrollConnection)
                 )
             }
+        }
+    }
+    WindowDialog(
+        show = showIgnoreAllDialog,
+        title = stringResource(Res.string.ignore_all_permanent),
+        summary = stringResource(Res.string.ignore_all_permanent_confirm, state.updates.size),
+        onDismissRequest = { showIgnoreAllDialog = false },
+    ) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            AppTextButton(
+                modifier = Modifier.weight(1f),
+                text = stringResource(Res.string.cancel),
+                onClick = { showIgnoreAllDialog = false },
+            )
+            Spacer(Modifier.width(16.dp))
+            AppTextButton(
+                modifier = Modifier.weight(1f),
+                text = stringResource(Res.string.confirm),
+                colors = ButtonDefaults.textButtonColorsPrimary(),
+                onClick = {
+                    viewModel.ignoreAllPermanently(state.updates)
+                    showIgnoreAllDialog = false
+                },
+            )
         }
     }
 }
@@ -174,6 +208,7 @@ private fun UpdatesCardList(
     listPadding: PaddingValues,
     viewModel: UpdatesViewModel,
     onOpenDetail: (MarketAppInfo) -> Unit,
+    onIgnoreAll: () -> Unit,
     modifier: Modifier
 ) {
     val updateActionText = stringResource(Res.string.update)
@@ -193,33 +228,45 @@ private fun UpdatesCardList(
                     .fillMaxWidth(),
                 insideMargin = PaddingValues(16.dp),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(
-                            stringResource(Res.string.num_updates_pending, updates.size),
-                            color = MiuixTheme.colorScheme.onSurface,
-                            style = MiuixTheme.textStyles.headline1.copy(
-                                fontWeight = FontWeight.Medium,
-                                lineHeight = 22.sp,
-                            ),
-                        )
-                        Text(
-                            formatSize(totalUpdateSize),
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                            style = MiuixTheme.textStyles.body2.copy(lineHeight = 18.sp),
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(
+                                stringResource(Res.string.num_updates_pending, updates.size),
+                                color = MiuixTheme.colorScheme.onSurface,
+                                style = MiuixTheme.textStyles.headline1.copy(
+                                    fontWeight = FontWeight.Medium,
+                                    lineHeight = 22.sp,
+                                ),
+                            )
+                            Text(
+                                formatSize(totalUpdateSize),
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                style = MiuixTheme.textStyles.body2.copy(lineHeight = 18.sp),
+                            )
+                        }
+                        AppButton(
+                            text = stringResource(Res.string.update_all),
+                            onClick = { viewModel.downloadAll(updates) },
+                            cornerRadius = 100.dp,
+                            minHeight = 34.dp,
+                            insideMargin = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                            colors = ButtonDefaults.buttonColorsPrimary(),
                         )
                     }
+                    // 与「全部更新」同排会在窄屏挤压文字，独占一行全宽展示
                     AppButton(
-                        text = stringResource(Res.string.update_all),
-                        onClick = { viewModel.downloadAll(updates) },
+                        text = stringResource(Res.string.ignore_all_permanent),
+                        onClick = onIgnoreAll,
+                        modifier = Modifier.fillMaxWidth(),
                         cornerRadius = 100.dp,
                         minHeight = 34.dp,
                         insideMargin = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                        colors = ButtonDefaults.buttonColorsPrimary(),
+                        colors = ButtonDefaults.buttonColors(),
                     )
                 }
             }

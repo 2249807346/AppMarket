@@ -227,6 +227,8 @@
     <string name="no_ignored">No ignored updates</string>
     <string name="ignore_once">Ignore this version</string>
     <string name="ignore_permanent">Ignore permanently</string>
+    <string name="ignore_all_permanent">Ignore all permanently</string>
+    <string name="ignore_all_permanent_confirm">Permanently ignore all %1$d updates?</string>
     <string name="system_app_tag">System app</string>
 
     <!-- About -->

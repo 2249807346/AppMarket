@@ -184,6 +184,7 @@ private class FakePreferences(
     override fun isIgnored(app: MarketAppInfo): Boolean = false
     override suspend fun ignoreOnce(app: MarketAppInfo) = Unit
     override suspend fun ignorePermanently(app: MarketAppInfo) = Unit
+    override suspend fun ignoreAllPermanently(apps: List<MarketAppInfo>) = Unit
     override suspend fun removePermanent(packageName: String) = Unit
     override suspend fun removeOnce(packageName: String) = Unit
     override suspend fun currentRemoveSearchAds(): Boolean = removeSearchAds.value

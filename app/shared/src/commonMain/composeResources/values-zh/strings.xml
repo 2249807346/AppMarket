@@ -228,6 +228,8 @@
     <string name="no_ignored">暂无忽略的更新</string>
     <string name="ignore_once">忽略本次</string>
     <string name="ignore_permanent">永久忽略</string>
+    <string name="ignore_all_permanent">全部永久忽略</string>
+    <string name="ignore_all_permanent_confirm">确定永久忽略全部 %1$d 个应用更新？</string>
     <string name="system_app_tag">系统应用</string>
 
     <!-- About -->

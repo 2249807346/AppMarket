@@ -173,6 +173,18 @@ internal class UpdatePreferencesRepositoryImpl(
         persistIgnores(permanent, once)
     }
 
+    // 批量与单条共用同一把锁：一次读改写，避免逐条调用时的 N 次写盘和中间态
+    override suspend fun ignoreAllPermanently(apps: List<MarketAppInfo>) = ignoreMutex.withLock {
+        if (apps.isEmpty()) return@withLock
+        val incoming = apps.distinctBy(MarketAppInfo::packageName).map(::toIgnoredUpdate)
+        val names = incoming.mapTo(HashSet()) { it.packageName }
+        val permanent = (
+                readIgnored(UpdatePreferenceKeys.PermanentIgnores).filterNot { it.packageName in names } + incoming
+                ).sortedIgnores()
+        val once = readIgnored(UpdatePreferenceKeys.OnceIgnores).filterNot { it.packageName in names }
+        persistIgnores(permanent, once)
+    }
+
     override suspend fun ignoreOnce(app: MarketAppInfo) = ignoreMutex.withLock {
         val permanent = readIgnored(UpdatePreferenceKeys.PermanentIgnores)
         if (permanent.none { it.packageName == app.packageName }) {
@@ -207,16 +219,18 @@ internal class UpdatePreferencesRepositoryImpl(
         parseIgnored(preferences.read(key))
 
     private fun upsert(existing: List<IgnoredUpdate>, app: MarketAppInfo): List<IgnoredUpdate> =
-        (existing.filterNot { it.packageName == app.packageName } + IgnoredUpdate(
-            appId = app.appId,
-            packageName = app.packageName,
-            displayName = app.displayName,
-            versionName = app.versionName,
-            versionCode = app.versionCode,
-            icon = app.icon,
-            isSystemApp = app.isSystemApp,
-            source = app.source,
-        )).sortedIgnores()
+        (existing.filterNot { it.packageName == app.packageName } + toIgnoredUpdate(app)).sortedIgnores()
+
+    private fun toIgnoredUpdate(app: MarketAppInfo): IgnoredUpdate = IgnoredUpdate(
+        appId = app.appId,
+        packageName = app.packageName,
+        displayName = app.displayName,
+        versionName = app.versionName,
+        versionCode = app.versionCode,
+        icon = app.icon,
+        isSystemApp = app.isSystemApp,
+        source = app.source,
+    )
 
     private fun List<IgnoredUpdate>.sortedIgnores(): List<IgnoredUpdate> =
         sortedWith(compareBy<IgnoredUpdate> { !it.isSystemApp }.thenBy { it.displayName })

@@ -274,6 +274,7 @@ private class SearchPreferences : UpdatePreferencesRepository {
     override fun isIgnored(app: MarketAppInfo) = false
     override suspend fun ignoreOnce(app: MarketAppInfo) = Unit
     override suspend fun ignorePermanently(app: MarketAppInfo) = Unit
+    override suspend fun ignoreAllPermanently(apps: List<MarketAppInfo>) = Unit
     override suspend fun removePermanent(packageName: String) = Unit
     override suspend fun removeOnce(packageName: String) = Unit
     override suspend fun currentRemoveSearchAds() = removeSearchAds.value

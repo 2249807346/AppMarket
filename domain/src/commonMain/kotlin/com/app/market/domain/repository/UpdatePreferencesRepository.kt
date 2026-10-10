@@ -38,6 +38,9 @@ interface UpdatePreferencesRepository {
     fun isIgnored(app: MarketAppInfo): Boolean
     suspend fun ignoreOnce(app: MarketAppInfo)
     suspend fun ignorePermanently(app: MarketAppInfo)
+
+    /** 批量永久忽略：[apps] 中的条目一次性写入永久列表，并从「忽略本次」列表中移除。 */
+    suspend fun ignoreAllPermanently(apps: List<MarketAppInfo>)
     suspend fun removePermanent(packageName: String)
     suspend fun removeOnce(packageName: String)
     suspend fun currentRemoveSearchAds(): Boolean

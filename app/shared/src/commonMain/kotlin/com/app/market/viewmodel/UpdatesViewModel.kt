@@ -213,6 +213,9 @@ class UpdatesViewModel(
     fun ignoreOnce(app: MarketAppInfo) = persist { prefs.ignoreOnce(app) }
     fun ignorePermanently(app: MarketAppInfo) = persist { prefs.ignorePermanently(app) }
 
+    /** 一键永久忽略：对当前可见列表 [apps] 生效（隐藏的系统应用不在其中）。 */
+    fun ignoreAllPermanently(apps: List<MarketAppInfo>) = persist { prefs.ignoreAllPermanently(apps) }
+
     private fun persist(block: suspend () -> Unit) {
         viewModelScope.launch { block() }
     }
